@@ -1,0 +1,7 @@
+{
+  "name": "Copy of CHIRAKA ",
+  "description": "An interactive OC relationship visualizer with a detective noir aesthetic, featuring draggable Polaroid-style cards connected by directional red strings.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

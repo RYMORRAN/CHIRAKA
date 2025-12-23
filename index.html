@@ -1,0 +1,352 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CHIRAKA - OC Relation Nexus</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+SC:wght@400;700;900&family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #0c0c0e;
+      color: #e2e2e7;
+      font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif !important;
+      cursor: crosshair !important;
+    }
+    
+    /* Global fallback to PingFang SC */
+    *:not(.bebas):not(.source-han):not(.orbital-line) {
+      font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif !important;
+    }
+
+    /* Bebas Neue for English titles */
+    .bebas { font-family: 'Bebas Neue', cursive !important; }
+
+    /* Source Han Sans CN for specific relationship and role texts */
+    .source-han { 
+      font-family: 'Noto Sans SC', 'Source Han Sans CN', sans-serif !important;
+      font-weight: 700;
+    }
+
+    .grid-bg {
+      background-image: radial-gradient(circle, #2a2a2e 1px, transparent 1px);
+      background-size: 30px 30px;
+    }
+
+    /* Pinterest-style Waterfall Layout */
+    .waterfall-container {
+      column-count: 2;
+      column-gap: 12px;
+      width: 100%;
+    }
+
+    .waterfall-item {
+      break-inside: avoid;
+      margin-bottom: 12px;
+      display: inline-block;
+      width: 100%;
+    }
+
+    /* SOPHISTICATED TITLE ORBITAL MOTION */
+    .title-wrapper {
+      position: relative;
+      padding: 20px;
+    }
+
+    .orbital-container {
+      position: absolute;
+      inset: -40px;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .orbit {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      border: 1px solid rgba(251, 191, 36, 0.15);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      animation: rotate-orbit linear infinite;
+    }
+
+    .orbit-1 { width: 120%; height: 160%; animation-duration: 20s; }
+    .orbit-2 { width: 140%; height: 110%; animation-duration: 15s; animation-direction: reverse; border-color: rgba(255, 255, 255, 0.1); }
+    .orbit-3 { width: 160%; height: 180%; animation-duration: 25s; }
+
+    .orbit-node {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: #fbbf24;
+      border-radius: 50%;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      box-shadow: 0 0 10px #fbbf24;
+    }
+
+    .orbit-node-white {
+      background: #fff;
+      box-shadow: 0 0 10px #fff;
+    }
+
+    @keyframes rotate-orbit {
+      from { transform: translate(-50%, -50%) rotate(0deg); }
+      to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    /* ARTISTIC TITLE STYLES */
+    .title-art-comic {
+      position: relative;
+      background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(251, 191, 36, 0.05) 100%);
+      animation: comic-shake 4s infinite ease-in-out;
+    }
+    .title-art-comic h1 {
+      text-shadow: 6px 6px 0px #000, 10px 10px 0px rgba(251, 191, 36, 0.3);
+    }
+    @keyframes comic-shake {
+      0%, 100% { transform: rotate(0deg) translate(0, 0); }
+      2% { transform: rotate(0.5deg) translate(-2px, 1px); }
+      4% { transform: rotate(-0.3deg) translate(1px, -1px); }
+      6% { transform: rotate(0deg) translate(0, 0); }
+    }
+
+    .title-art-street {
+      filter: url(#rough-texture);
+      animation: street-vibe 6s infinite alternate;
+    }
+    .title-art-street::after {
+      content: "";
+      position: absolute;
+      bottom: -20px;
+      left: 10%;
+      width: 2px;
+      height: 40px;
+      background: #fbbf24;
+      box-shadow: 40px 10px 0 #fbbf24, 80px 20px 0 #fff;
+      opacity: 0.6;
+      animation: drip 3s infinite ease-in;
+    }
+    @keyframes street-vibe {
+      0% { transform: skew(0deg); filter: contrast(1.2) brightness(1); }
+      90% { transform: skew(0deg); }
+      95% { transform: skew(2deg) scale(1.01); filter: contrast(1.5) brightness(1.2); }
+    }
+    @keyframes drip {
+      0% { transform: scaleY(0); transform-origin: top; }
+      50% { transform: scaleY(1); }
+      100% { transform: scaleY(0); transform-origin: bottom; }
+    }
+
+    .title-art-pop {
+      position: relative;
+      mix-blend-mode: screen;
+      animation: pop-pulse 2s infinite cubic-bezier(0.17, 0.67, 0.83, 0.67);
+    }
+    .title-art-pop::before {
+      content: attr(data-text);
+      position: absolute;
+      inset: 0;
+      color: #ff00ff;
+      z-index: -1;
+      transform: translate(-4px, -4px);
+      opacity: 0.5;
+    }
+    @keyframes pop-pulse {
+      0%, 100% { transform: scale(1); filter: saturate(1); }
+      50% { transform: scale(1.02); filter: saturate(2) drop-shadow(0 0 10px rgba(251, 191, 36, 0.5)); }
+    }
+
+    .title-art-pollock {
+      position: relative;
+    }
+    .title-art-pollock .splatter {
+      position: absolute;
+      background: #fbbf24;
+      border-radius: 50%;
+      pointer-events: none;
+      opacity: 0;
+      animation: splatter-fade 3s infinite;
+    }
+    @keyframes splatter-fade {
+      0% { transform: scale(0); opacity: 0; }
+      20% { transform: scale(1); opacity: 0.8; }
+      100% { transform: scale(2); opacity: 0; }
+    }
+
+    /* CORNER FRAME LINES */
+    .corner-frame {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      pointer-events: none;
+      border: 4px solid #fbbf24;
+      z-index: 1;
+      opacity: 0.8;
+      transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .corner-top-left {
+      top: 10px;
+      left: 10px;
+      border-right: none;
+      border-bottom: none;
+    }
+    .corner-bottom-right {
+      bottom: 10px;
+      right: 10px;
+      border-left: none;
+      border-top: none;
+    }
+
+    /* REDESIGNED CARD AESTHETICS (B/W/Y) */
+    .flat-card {
+      background: #111;
+      border: 1px solid #333;
+      box-shadow: 8px 8px 0px #000;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .flat-card:hover {
+      border-color: #fbbf24;
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 12px 12px 0px rgba(251, 191, 36, 0.2), 15px 15px 0px #000;
+    }
+
+    /* Style overrides */
+    .style-intel {
+      border: 1px solid #fbbf24 !important;
+      background: #000 !important;
+      clip-path: polygon(0 0, 95% 0, 100% 5%, 100% 100%, 5% 100%, 0 95%);
+    }
+    .style-stencil {
+      border: 8px solid #fbbf24 !important;
+      background: #fff !important;
+      box-shadow: 10px 10px 0px #000 !important;
+    }
+    .style-noir {
+      border: 2px solid #fff !important;
+      background: #000 !important;
+      box-shadow: 15px 15px 0px #fbbf24 !important;
+    }
+    .style-warning {
+      background: #fbbf24 !important;
+      border: 4px solid #000 !important;
+    }
+    .style-warning * { color: #000 !important; }
+
+    .string-path { 
+      filter: drop-shadow(0 0 3px currentColor);
+      pointer-events: stroke;
+      cursor: crosshair;
+    }
+    
+    .btn-flat {
+      background: #fbbf24;
+      color: #000;
+      font-weight: 900;
+      border: 2px solid #000;
+      box-shadow: 4px 4px 0px #000;
+      transition: all 0.1s;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .btn-flat:active {
+      transform: translate(1px, 1px);
+      box-shadow: 2px 2px 0px #000;
+    }
+    
+    .btn-secondary {
+      background: #1e1e22;
+      color: #fff;
+      border: 2px solid #333;
+      box-shadow: 4px 4px 0px #000;
+      font-weight: 700;
+    }
+    
+    .custom-scroll::-webkit-scrollbar { width: 4px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #fbbf24; }
+
+    .click-splash {
+      position: fixed;
+      width: 40px;
+      height: 40px;
+      border: 2px solid #fbbf24;
+      border-radius: 50%;
+      pointer-events: none;
+      transform: translate(-50%, -50%) scale(0);
+      animation: splash-anim 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      z-index: 9999;
+    }
+    @keyframes splash-anim {
+      0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+    }
+
+    @keyframes scan {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(400px); }
+    }
+    .animate-scan {
+      animation: scan 4s linear infinite;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+    .animate-shake {
+      animation: shake 0.2s linear infinite;
+    }
+
+    .jiggle {
+      animation: jiggle 0.3s infinite;
+    }
+    @keyframes jiggle {
+      0% { transform: rotate(-1deg); }
+      50% { transform: rotate(1.5deg); }
+      100% { transform: rotate(-1deg); }
+    }
+  </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom": "https://esm.sh/react-dom@^19.2.3",
+    "lucide-react": "https://esm.sh/lucide-react@^0.462.0",
+    "@google/genai": "https://esm.sh/@google/genai",
+    "html-to-image": "https://esm.sh/html-to-image@^1.11.11",
+    "sortablejs": "https://esm.sh/sortablejs@1.15.2",
+    "lz-string": "https://esm.sh/lz-string@1.5.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/"
+  }
+}
+</script>
+</head>
+<body class="grid-bg">
+  <div id="root"></div>
+  <svg width="0" height="0" style="position:absolute">
+    <filter id="rough-texture">
+      <feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="3" result="noise" />
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="2" />
+    </filter>
+  </svg>
+  <script>
+    window.addEventListener('mousedown', (e) => {
+      const splash = document.createElement('div');
+      splash.className = 'click-splash';
+      splash.style.left = e.clientX + 'px';
+      splash.style.top = e.clientY + 'px';
+      document.body.appendChild(splash);
+      setTimeout(() => splash.remove(), 600);
+    });
+  </script>
+</body>
+</html>
