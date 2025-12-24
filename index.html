@@ -29,10 +29,20 @@
       touch-action: none; /* Prevents default browser gestures like pull-to-refresh */
     }
     
-    /* Apply scaling to non-board UI elements if needed, 
-       but for this app we'll apply it via transform in App.tsx 
-       to ensure everything remains interactive. 
-    */
+    /* Fallback UI styling */
+    #fallback-ui {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #000;
+      color: #fbbf24;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+    }
 
     *:not(.bebas):not(.source-han):not(.orbital-line) {
       font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif !important;
@@ -239,6 +249,7 @@
       background: #000 !important;
       box-shadow: 15px 15px 0px #fbbf24 !important;
     }
+    .style-noir * { color: #fff !important; }
     .style-warning {
       background: #fbbf24 !important;
       border: 4px solid #000 !important;
@@ -339,13 +350,35 @@
 </head>
 <body class="grid-bg">
   <div id="root"></div>
+
+  <!-- 紧急恢复 UI (仅在 React 加载失败时显示) -->
+  <div id="fallback-ui">
+    <div class="bebas text-4xl mb-4">CONNECTION INTERRUPTED</div>
+    <div class="source-han text-zinc-400 mb-8">检测到应用加载异常，可能是本地缓存损坏。</div>
+    <button onclick="localStorage.clear(); sessionStorage.clear(); location.reload();" 
+            style="background: #fbbf24; color: #000; padding: 15px 30px; border: none; font-weight: 900; cursor: pointer; text-transform: uppercase;">
+      CLEAR CACHE & REBOOT / 清除缓存并重启
+    </button>
+  </div>
+
   <svg width="0" height="0" style="position:absolute">
     <filter id="rough-texture">
       <feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="3" result="noise" />
       <feDisplacementMap in="SourceGraphic" in2="noise" scale="2" />
     </filter>
   </svg>
+  
   <script>
+    // React 挂载检测脚本
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const root = document.getElementById('root');
+        if (root && root.innerHTML === '') {
+          document.getElementById('fallback-ui').style.display = 'flex';
+        }
+      }, 5000); // 如果 5 秒后 root 依然为空，显示恢复按键
+    });
+
     window.addEventListener('mousedown', (e) => {
       const splash = document.createElement('div');
       splash.className = 'click-splash';

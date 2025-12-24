@@ -9,7 +9,7 @@ import { INITIAL_CHARACTERS, INITIAL_RELATIONSHIPS, RELATIONSHIP_TYPES, DEFAULT_
 import CharacterCard from './components/CharacterCard';
 import RelationshipLine from './components/RelationshipLine';
 import EditModal from './components/EditModal';
-import { Sparkles, Plus, Download, Upload, Image as ImageIcon, X, Save, ChevronLeft, ChevronRight, Palette, FolderHeart, Loader2, FileJson, FolderDown, FileUp, Undo2, Redo2, Layout, GripVertical, HelpCircle, MousePointer2, Move, Link, ZoomIn, Terminal, Check, Box, Type, Filter, Users, Skull, Lock, Eye, ShieldCheck, Database, PencilLine, ShieldAlert, Share2 } from 'lucide-react';
+import { Sparkles, Plus, Download, Upload, Image as ImageIcon, X, Save, ChevronLeft, ChevronRight, Palette, FolderHeart, Loader2, FileJson, FolderDown, FileUp, Undo2, Redo2, Layout, GripVertical, HelpCircle, MousePointer2, Move, Link, ZoomIn, Terminal, Check, Box, Type, Filter, Users, Skull, Lock, Eye, ShieldCheck, Database, PencilLine, ShieldAlert, Share2, RefreshCw } from 'lucide-react';
 
 const RoseIcon = ({ size = 22, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -33,7 +33,7 @@ const MoleculeTriangleIcon = ({ size = 22, className = "" }) => (
 
 const ThornsIcon = ({ size = 22, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M3 12c4 0 4-4 8-4s4 4 8 4 4-4 8-4" />
+    <path d="M3 12c4 0 4-4 8-4s4 4 8 4 4-4 8 4 4-4 8-4" />
     <path d="M2 16c4 0 4 4 8 4s4-4 8-4 4 4 8 4" />
     <path d="M7 10l-2-3" />
     <path d="M11 7l1-3" />
@@ -61,9 +61,10 @@ const App: React.FC = () => {
   
   const [isGroupAssignmentMode, setIsGroupAssignmentMode] = useState(false);
 
-  const [characters, setCharacters] = useState<Character[]>(INITIAL_CHARACTERS);
-  const [relationships, setRelationships] = useState<Relationship[]>(INITIAL_RELATIONSHIPS);
-  const [relTypes, setRelTypes] = useState<RelationshipTypeConfig[]>(RELATIONSHIP_TYPES);
+  // 强化默认值容错
+  const [characters, setCharacters] = useState<Character[]>(INITIAL_CHARACTERS || []);
+  const [relationships, setRelationships] = useState<Relationship[]>(INITIAL_RELATIONSHIPS || []);
+  const [relTypes, setRelTypes] = useState<RelationshipTypeConfig[]>(RELATIONSHIP_TYPES || []);
   const [layoutConfig, setLayoutConfig] = useState<LayoutConfig>({ ...DEFAULT_LAYOUT, cardScale: 1.0 });
   const [titleWhite, setTitleWhite] = useState('CHIRAKA');
   const [titleYellow, setTitleYellow] = useState('NEXUS');
@@ -125,9 +126,11 @@ const App: React.FC = () => {
   }, []);
 
   const applyState = useCallback((state: BoardData, shouldArchive = false) => {
-    setCharacters(state.characters || INITIAL_CHARACTERS);
-    setRelationships(state.relationships || INITIAL_RELATIONSHIPS);
-    setRelTypes(state.relTypes || RELATIONSHIP_TYPES);
+    if (!state) return;
+
+    setCharacters(state.characters || INITIAL_CHARACTERS || []);
+    setRelationships(state.relationships || INITIAL_RELATIONSHIPS || []);
+    setRelTypes(state.relTypes || RELATIONSHIP_TYPES || []);
     setLayoutConfig(state.layoutConfig || DEFAULT_LAYOUT);
     setTitleWhite(state.titleWhite || 'CHIRAKA');
     setTitleYellow(state.titleYellow || 'NEXUS');
@@ -137,49 +140,62 @@ const App: React.FC = () => {
     setCardStyle(state.cardStyle || 'default');
     setTitleStyle(state.titleStyle || 'comic');
 
-    // 只有在手动导入或保存时才更新本地存档
     if (shouldArchive) {
-      localStorage.setItem('NEXUS_ARCHIVE_DATA', JSON.stringify(state));
+      try {
+        localStorage.setItem('NEXUS_ARCHIVE_DATA', JSON.stringify(state));
+      } catch (e) { console.error("Archive Failed", e); }
     }
   }, []);
 
-  // 加载优先级逻辑
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sharedState = params.get('s');
     
-    // 优先级 1: URL 分享参数 (最高)
     if (sharedState) {
       try {
         const decompressed = LZString.decompressFromEncodedURIComponent(sharedState);
         if (decompressed) {
           const data = JSON.parse(decompressed);
-          applyState(data, false); // URL分享的不自动覆盖本地存档
+          applyState(data, false);
           setViewMode('observer');
           return;
         }
       } catch (err) { console.error("URL Load failed", err); }
     } 
 
-    // 优先级 2: 本地存档 (Archive)
     const archived = localStorage.getItem('NEXUS_ARCHIVE_DATA');
     if (archived) {
       try {
         const data = JSON.parse(archived);
-        applyState(data, false);
-        return;
+        if (data && typeof data === 'object') {
+          applyState(data, false);
+          return;
+        }
       } catch (err) { console.error("Archive Load failed", err); }
     }
     
-    // 优先级 3: GitHub 预设代码 (PRELOADED_BOARD_DATA)
     if (PRELOADED_BOARD_DATA && PRELOADED_BOARD_DATA.trim() !== '') {
       try {
         const data = JSON.parse(PRELOADED_BOARD_DATA);
-        applyState(data, false);
-      } catch (err) {
-        console.error("Preloaded JSON parsing failed.", err);
-      }
+        if (data && typeof data === 'object') {
+          applyState(data, false);
+          return;
+        }
+      } catch (err) { console.error("Preloaded JSON parsing failed.", err); }
     }
+
+    // 最终保底：如果没有任何数据，也要应用初始 Demo 状态
+    applyState({
+      characters: INITIAL_CHARACTERS,
+      relationships: INITIAL_RELATIONSHIPS,
+      relTypes: RELATIONSHIP_TYPES,
+      layoutConfig: DEFAULT_LAYOUT,
+      titleWhite: 'CHIRAKA',
+      titleYellow: 'NEXUS',
+      sidebarWidth: 320,
+      isGlobalBlackAndWhite: false
+    } as BoardData, false);
+
   }, [applyState]);
 
   const handleFocusGroup = useCallback((groupId: string) => {
@@ -235,13 +251,22 @@ const App: React.FC = () => {
       reader.onload = (ev) => {
         try {
           const data = JSON.parse(ev.target?.result as string);
-          applyState(data, true); // 手动导入时更新 Archive
+          applyState(data, true); 
           handleObserverEntry();
         } catch (err) {
           alert("Invalid JSON data format.");
         }
       };
       reader.readAsText(file);
+    }
+  };
+
+  const handleEmergencyReset = () => {
+    const confirmed = window.confirm("确定要执行紧急修复吗？这将清除所有本地缓存数据并重启应用。");
+    if (confirmed) {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.reload();
     }
   };
 
@@ -284,7 +309,7 @@ const App: React.FC = () => {
     const lastState = history[history.length - 1];
     setRedoStack(prev => [...prev, currentState]);
     setHistory(prev => prev.slice(0, -1));
-    applyState(lastState, false); // 撤销操作不自动更新存档，防止误操作
+    applyState(lastState, false); 
   }, [history, getCurrentBoardData, isReadOnly, applyState]);
 
   const handleRedo = useCallback(() => {
@@ -551,50 +576,6 @@ const App: React.FC = () => {
     link.click();
   };
 
-  const exportAssetPackage = () => {
-    const assets = characters.map(c => ({
-      id: c.id,
-      name: c.name,
-      imageUrl: c.imageUrl,
-      gallery: c.gallery
-    }));
-    const blob = new Blob([JSON.stringify({ type: 'CHIRAKA_ASSET_PACKAGE', assets }, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `CHIRAKA_Assets_${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const importAssetPackage = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || isReadOnly) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const data = JSON.parse(ev.target?.result as string);
-        if (data.type === 'CHIRAKA_ASSET_PACKAGE' && Array.isArray(data.assets)) {
-          recordHistory();
-          setCharacters(prev => prev.map(c => {
-            const found = data.assets.find((a: any) => a.id === c.id || a.name === c.name);
-            if (found) {
-              return { 
-                ...c, 
-                imageUrl: found.imageUrl || c.imageUrl,
-                gallery: Array.from(new Set([...c.gallery, ...(found.gallery || [])]))
-              };
-            }
-            return c;
-          }));
-        }
-      } catch (err) {
-        console.error('Import failed', err);
-      }
-    };
-    reader.readAsText(file);
-  };
-
   const handleAiAnalyze = async () => {
     if (!aiInput.trim() || isReadOnly) return;
     setIsAiLoading(true);
@@ -656,10 +637,10 @@ const App: React.FC = () => {
     });
   };
 
-  const allGalleryImages = characters.flatMap(c => c.gallery);
+  const allGalleryImages = characters.flatMap(c => c.gallery || []);
 
   const getRelInfo = (relId: string, char1Id: string, char2Id: string) => {
-    const sortedRels = relationships.filter(r => 
+    const sortedRels = (relationships || []).filter(r => 
       (r.fromId === char1Id && r.toId === char2Id) || (r.fromId === char2Id && r.toId === char1Id)
     ).sort((a, b) => a.id.localeCompare(b.id));
     return { index: sortedRels.findIndex(r => r.id === relId), total: sortedRels.length };
@@ -673,21 +654,6 @@ const App: React.FC = () => {
     grunge_file: 'bg-[#1a1917] bg-[url("https://www.transparenttextures.com/patterns/carbon-fibre.png")] opacity-95 after:absolute after:inset-0 after:bg-[linear-gradient(to_bottom,transparent,rgba(0,0,0,0.5))] after:pointer-events-none after:-z-10'
   };
 
-  const cardStyles: Record<string, string> = {
-    default: 'Standard Edition',
-    intel: 'Cyber Intelligence',
-    stencil: 'Stencil Poster',
-    noir: 'Noir High-Contrast',
-    warning: 'Hazard Zone'
-  };
-
-  const titleStyles: Record<string, string> = {
-    comic: 'Comic Tension (Noir)',
-    street: 'Street Soul (Stencil)',
-    pop: 'Pop Art Blast (Blast)',
-    pollock: 'Action Pollock (Splatter)'
-  };
-
   const titleClassMap: Record<string, string> = {
     comic: 'title-art-comic',
     street: 'title-art-street',
@@ -696,7 +662,7 @@ const App: React.FC = () => {
   };
 
   const sortedRelationships = useMemo(() => {
-    return [...relationships].sort((a, b) => {
+    return [...(relationships || [])].sort((a, b) => {
       if (a.id === hoveredRelId) return 1;
       if (b.id === hoveredRelId) return -1;
       if (a.isDashed && !b.isDashed) return -1;
@@ -773,12 +739,21 @@ const App: React.FC = () => {
                 </button>
               </div>
 
-              <div className="flex justify-center">
+              <div className="flex flex-col items-center gap-4">
                 <label className="flex items-center gap-2 px-4 md:px-6 py-2 border-2 border-dashed border-zinc-800 hover:border-blue-500 hover:bg-blue-500/5 transition-all cursor-pointer group/imp">
                   <Database size={14} className="text-zinc-500 group-hover/imp:text-blue-500" />
                   <span className="text-[8px] md:text-[10px] font-black text-zinc-500 group-hover/imp:text-blue-500 uppercase tracking-widest text-center">LOAD EXTERNAL INTEL / 导入数据</span>
                   <input type="file" className="hidden" accept=".json" onChange={handleStartupImport} />
                 </label>
+                
+                {/* 紧急重置按钮 */}
+                <button 
+                  onClick={handleEmergencyReset}
+                  className="flex items-center gap-2 px-4 md:px-6 py-2 border-2 border-red-900 text-red-900 hover:bg-red-900/10 transition-all"
+                >
+                  <RefreshCw size={14} />
+                  <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest">REPAIR CONNECTION / 紧急修复</span>
+                </button>
               </div>
             </div>
 
@@ -794,16 +769,10 @@ const App: React.FC = () => {
 
   return (
     <div className={`flex h-screen w-screen overflow-hidden relative transition-all duration-700 ${bgStyles[backgroundStyle] || bgStyles.default}`}>
-      
       <div className="corner-frame corner-top-left"></div>
       <div className="corner-frame corner-bottom-right"></div>
 
-      {/* 缩放过的全局 UI 容器 */}
-      <div 
-        className="fixed inset-0 pointer-events-none z-[100]" 
-        style={{ transformOrigin: 'top left' }}
-      >
-        {/* 右侧组别栏 */}
+      <div className="fixed inset-0 pointer-events-none z-[100]" style={{ transformOrigin: 'top left' }}>
         <div 
           className="fixed right-0 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 p-2 md:p-3 bg-zinc-900/40 backdrop-blur-md border-l-4 border-black border-y-4 rounded-l-xl pointer-events-auto"
           style={{ transform: `scale(${uiScale}) translateY(-50%)`, transformOrigin: 'right center' }}
@@ -860,7 +829,7 @@ const App: React.FC = () => {
               </button>
             )}
             {panelView === 'info' || panelView === 'edit' || panelView === 'settings' ? <ImageIcon size={24} /> : <Terminal size={24} />}
-            <span className="truncate bebas">{panelView === 'info' || panelView === 'edit' || panelView === 'settings' ? 'DOSSIER' : 'INTEL'}</span>
+            <span className="truncate bebas uppercase">{panelView === 'info' || panelView === 'edit' || panelView === 'settings' ? 'DOSSIER' : 'INTEL'}</span>
           </h2>
           <button onClick={() => setIsSidebarOpen(false)} className="text-zinc-500 hover:text-white transition-colors">
             <X size={24} />
@@ -889,16 +858,16 @@ const App: React.FC = () => {
                    )}
                 </div>
                 <div className="flex gap-2 h-20 overflow-hidden">
-                  {activeData.gallery.slice(0, 3).map((img: string, i: number) => (
+                  {(activeData.gallery || []).slice(0, 3).map((img: string, i: number) => (
                     <div key={i} className="relative w-1/3 group cursor-pointer" onClick={() => setViewedImage(img)}>
                       <img src={img} className="w-full h-full object-cover border-2 border-zinc-800 group-hover:border-yellow-500 transition-colors" />
                     </div>
                   ))}
-                  {activeData.gallery.length === 0 && <div className="w-full flex items-center justify-center bebas text-[10px] tracking-widest text-zinc-600 border-2 border-dashed border-zinc-800">NO MEDIA LINKED</div>}
+                  {(!activeData.gallery || activeData.gallery.length === 0) && <div className="w-full flex items-center justify-center bebas text-[10px] tracking-widest text-zinc-600 border-2 border-dashed border-zinc-800 uppercase">NO MEDIA LINKED</div>}
                 </div>
                 <button onClick={() => { setActiveGalleryMode('personal'); setIsAlbumOpen(true); }} className="btn-secondary w-full py-2 text-[10px] md:text-[11px] tracking-widest font-black hover:bg-yellow-500 hover:text-black flex items-center justify-center gap-2 bebas uppercase">VIEW FULL GALLERY <ChevronRight size={14} /></button>
               </div>
-              {panelView === 'edit' && !isReadOnly && <button onClick={() => setPanelView('info')} className="btn-flat w-full py-3 flex items-center justify-center gap-2 mt-4 bebas"><Save size={18} /> DONE</button>}
+              {panelView === 'edit' && !isReadOnly && <button onClick={() => setPanelView('info')} className="btn-flat w-full py-3 flex items-center justify-center gap-2 mt-4 bebas uppercase"><Save size={18} /> DONE</button>}
             </div>
           )}
           {panelView === 'intel' && (
@@ -911,7 +880,7 @@ const App: React.FC = () => {
                 disabled={isReadOnly}
               />
               {!isReadOnly && (
-                <button onClick={handleAiAnalyze} disabled={isAiLoading || !aiInput.trim()} className="btn-flat w-full py-3 flex items-center justify-center gap-2 disabled:opacity-50">{isAiLoading ? <Loader2 size={24} className="animate-spin" /> : <Sparkles size={24} />} {isAiLoading ? 'ANALYZING...' : 'DECRYPT INTEL'}</button>
+                <button onClick={handleAiAnalyze} disabled={isAiLoading || !aiInput.trim()} className="btn-flat w-full py-3 flex items-center justify-center gap-2 disabled:opacity-50 uppercase">{isAiLoading ? <Loader2 size={24} className="animate-spin" /> : <Sparkles size={24} />} {isAiLoading ? 'ANALYZING...' : 'DECRYPT INTEL'}</button>
               )}
             </div>
           )}
@@ -919,8 +888,8 @@ const App: React.FC = () => {
         {!isReadOnly && (
           <div className="p-4 md:p-6 bg-zinc-900 border-t-4 border-black space-y-2 md:space-y-3 shrink-0">
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={exportBoard} className="btn-flat py-2 text-[8px] md:text-[10px] uppercase flex items-center justify-center gap-1 hover:bg-white hover:text-black shadow-sm font-black tracking-widest"><Save size={14} /> SAVE</button>
-              <label className="btn-secondary py-2 text-[8px] md:text-[10px] uppercase flex items-center justify-center gap-1 hover:bg-yellow-500 hover:text-black cursor-pointer shadow-sm font-black tracking-widest">
+              <button onClick={exportBoard} className="btn-flat py-2 text-[8px] md:text-[10px] uppercase flex items-center justify-center gap-1 hover:bg-white hover:text-black shadow-sm font-black tracking-widest uppercase"><Save size={14} /> SAVE</button>
+              <label className="btn-secondary py-2 text-[8px] md:text-[10px] uppercase flex items-center justify-center gap-1 hover:bg-yellow-500 hover:text-black cursor-pointer shadow-sm font-black tracking-widest uppercase">
                 <Upload size={14} /> IMPORT
                 <input type="file" className="hidden" accept=".json" onChange={(e) => { 
                   const file = e.target.files?.[0]; 
@@ -941,12 +910,12 @@ const App: React.FC = () => {
             <div className="relative">
               <button 
                 onClick={generateShareLink} 
-                className="w-full btn-secondary py-2 md:py-3 text-[10px] md:text-[11px] uppercase flex items-center justify-center gap-2 hover:bg-blue-600 hover:text-white font-black tracking-widest border-2 border-zinc-700"
+                className="w-full btn-secondary py-2 md:py-3 text-[10px] md:text-[11px] uppercase flex items-center justify-center gap-2 hover:bg-blue-600 hover:text-white font-black tracking-widest border-2 border-zinc-700 uppercase"
               >
                 <Share2 size={16} /> {copyStatus || 'SHARE LINK'}
               </button>
             </div>
-            <button onClick={takeScreenshot} className="w-full btn-secondary py-2 md:py-3 text-[10px] md:text-[11px] uppercase flex items-center justify-center gap-2 hover:border-yellow-500 font-black tracking-widest"><ImageIcon size={18} /> SNAPSHOT</button>
+            <button onClick={takeScreenshot} className="w-full btn-secondary py-2 md:py-3 text-[10px] md:text-[11px] uppercase flex items-center justify-center gap-2 hover:border-yellow-500 font-black tracking-widest uppercase"><ImageIcon size={18} /> SNAPSHOT</button>
           </div>
         )}
       </div>
@@ -986,12 +955,10 @@ const App: React.FC = () => {
             transition: isPanning ? 'none' : 'transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
           }}
         >
-          
           <div className="absolute inset-0 pointer-events-none">
             {characters.map(char => {
               const isHighlighted = !isAnyFilterActive || highlightedCharIds.has(char.id);
               const isMemberOfActiveGroup = isGroupAssignmentMode && activeGroupId && char.groupId === activeGroupId;
-
               return (
                 <div key={char.id} className="pointer-events-auto">
                   <CharacterCard 
