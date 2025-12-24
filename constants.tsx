@@ -1,5 +1,21 @@
 
-import { Character, Relationship, RelationshipTypeConfig, LayoutConfig } from './types';
+import { Character, Relationship, RelationshipTypeConfig, LayoutConfig, BoardData } from './types';
+
+/**
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * 
+ *   🔴🔴🔴 [核心情报数据注入区 / CORE INTEL INJECTION ZONE] 🔴🔴🔴
+ *   
+ *   如果你想在部署后默认显示你设计的布局：
+ *   1. 在网页端点击 "SAVE NEXUS" 导出 JSON 文件。
+ *   2. 用记事本打开该 JSON，复制全部内容。
+ *   3. 将内容粘贴在下方 PRELOADED_BOARD_DATA 的两个反引号 `` 之间。
+ *   4. 如果这里保持为空 (null)，系统将加载下方的初始 Demo 演示数据。
+ * 
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ */
+export const PRELOADED_BOARD_DATA: string | null = ``; 
+
 
 export const RELATIONSHIP_TYPES: RelationshipTypeConfig[] = [
   { id: 'love', label: '情感', color: '#ff4d4d' },

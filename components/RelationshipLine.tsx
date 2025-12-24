@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Character, Relationship, RelationshipTypeConfig } from '../types';
 
 interface RelationshipLineProps {
@@ -28,6 +28,7 @@ const RelationshipLine: React.FC<RelationshipLineProps> = ({
   isReadOnly = false
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const touchTimer = useRef<number | null>(null);
 
   const W = 160;
   const H = 220;
@@ -55,24 +56,19 @@ const RelationshipLine: React.FC<RelationshipLineProps> = ({
     });
 
     const { p1, p2 } = minData;
-    
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-    
     const ux = -dy / dist;
     const uy = dx / dist;
     
     const offsetMag = (relIndex - (relTotal - 1) / 2) * 35;
-    
     const startX = p1.x + ux * offsetMag;
     const startY = p1.y + uy * offsetMag;
     const endX = p2.x + ux * offsetMag;
     const endY = p2.y + uy * offsetMag;
-
     const midX = (startX + endX) / 2;
     const midY = (startY + endY) / 2;
-    
     const cur = 50; 
     const cpX = midX + ux * cur;
     const cpY = midY + uy * cur;
@@ -82,26 +78,37 @@ const RelationshipLine: React.FC<RelationshipLineProps> = ({
 
   const color = typeConfig?.color || '#ffffff';
 
-  const labelStyles = useMemo(() => {
-    if (relationship.isDashed) {
-      return {
-        backgroundColor: 'transparent',
-        color: '#ffffff',
-        border: '2px solid #ffffff',
-        borderRadius: '9999px',
-        padding: '4px 16px',
-        backdropFilter: 'blur(4px)',
-        filter: isDimmed ? 'grayscale(1) opacity(0.3)' : 'none'
-      };
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (isDimmed) return;
+    touchTimer.current = window.setTimeout(() => {
+      setIsHovered(true);
+      onHoverChange(relationship.id);
+    }, 500); // 500ms long press to show info on mobile
+  };
+
+  const handleTouchEnd = () => {
+    if (touchTimer.current) {
+      clearTimeout(touchTimer.current);
+      touchTimer.current = null;
     }
-    return {
+  };
+
+  const labelStyles = useMemo(() => {
+    const base = relationship.isDashed ? {
+      backgroundColor: 'transparent',
+      color: '#ffffff',
+      border: '2px solid #ffffff',
+      borderRadius: '9999px',
+      padding: '4px 16px',
+      backdropFilter: 'blur(4px)',
+    } : {
       backgroundColor: '#000000',
       color: color,
       border: `2px solid ${color}`,
       borderRadius: '2px',
       padding: '4px 12px',
-      filter: isDimmed ? 'grayscale(1) opacity(0.3)' : 'none'
     };
+    return { ...base, filter: isDimmed ? 'grayscale(1) opacity(0.3)' : 'none' };
   }, [relationship.isDashed, color, isDimmed]);
 
   return (
@@ -117,6 +124,8 @@ const RelationshipLine: React.FC<RelationshipLineProps> = ({
         setIsHovered(false);
         onHoverChange(null);
       }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
       style={{ pointerEvents: isDimmed ? 'none' : 'all' }}
     >
       <defs>
@@ -166,7 +175,6 @@ const RelationshipLine: React.FC<RelationshipLineProps> = ({
         style={{ pointerEvents: 'none', overflow: 'visible' }}
       >
         <div className="flex flex-col items-center justify-center h-full w-full relative">
-          
           <div 
             className={`absolute mb-6 bg-zinc-950/95 border-2 p-3 rounded shadow-[0_20px_60px_rgba(0,0,0,1)] w-64 text-center transition-all duration-300 transform ${isHovered && relationship.description && !isDimmed ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4'}`}
             style={{ 
@@ -176,17 +184,8 @@ const RelationshipLine: React.FC<RelationshipLineProps> = ({
               borderColor: `${color}cc`
             }}
           >
-            <div 
-              className="bebas text-[10px] mb-1 tracking-[0.3em]"
-              style={{ color }}
-            >
-              DOSSIER FRAGMENT
-            </div>
-            <p className="text-[12px] text-white font-bold leading-relaxed source-han px-1">
-              {relationship.description}
-            </p>
-            <div className="mt-2 h-[1px] bg-zinc-800 w-full"></div>
-            <div className="mt-1 text-[8px] text-zinc-600 font-black uppercase">Chiraka Intel Service</div>
+            <div className="bebas text-[10px] mb-1 tracking-[0.3em]" style={{ color }}>DOSSIER FRAGMENT</div>
+            <p className="text-[12px] text-white font-bold leading-relaxed source-han px-1">{relationship.description}</p>
           </div>
 
           <button 

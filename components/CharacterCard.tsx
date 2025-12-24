@@ -43,7 +43,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const longPressTimer = useRef<number | null>(null);
-  const startMousePos = useRef({ x: 0, y: 0 });
+  const startPos = useRef({ x: 0, y: 0 });
   const hasMovedSignificant = useRef(false);
 
   const styleClasses = {
@@ -54,15 +54,12 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
     warning: 'style-warning'
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleStart = (clientX: number, clientY: number) => {
     if (isReadOnly) return;
-    if ((e.target as HTMLElement).closest('.link-handle')) return;
-    if ((e.target as HTMLElement).closest('.delete-btn')) return;
-
-    startMousePos.current = { x: e.clientX, y: e.clientY };
+    
+    startPos.current = { x: clientX, y: clientY };
     hasMovedSignificant.current = false;
 
-    // Start long-press timer
     longPressTimer.current = window.setTimeout(() => {
       if (!hasMovedSignificant.current && !isDeletionMode) {
         onStartDeletionMode();
@@ -71,17 +68,17 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
 
     setIsDragging(true);
     setOffset({
-      x: e.clientX - character.position.x,
-      y: e.clientY - character.position.y
+      x: clientX - character.position.x,
+      y: clientY - character.position.y
     });
     
     onHoverChange?.(true);
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
+  const handleMove = (clientX: number, clientY: number) => {
     if (isDragging) {
-      const dx = Math.abs(e.clientX - startMousePos.current.x);
-      const dy = Math.abs(e.clientY - startMousePos.current.y);
+      const dx = Math.abs(clientX - startPos.current.x);
+      const dy = Math.abs(clientY - startPos.current.y);
       if (dx > 5 || dy > 5) {
         hasMovedSignificant.current = true;
         if (longPressTimer.current) {
@@ -89,11 +86,11 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
           longPressTimer.current = null;
         }
       }
-      onPositionChange(character.id, e.clientX - offset.x, e.clientY - offset.y);
+      onPositionChange(character.id, clientX - offset.x, clientY - offset.y);
     }
   };
 
-  const handleMouseUp = () => {
+  const handleEnd = () => {
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
@@ -104,16 +101,39 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
     setIsDragging(false);
   };
 
+  // Mouse Listeners
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.link-handle')) return;
+    if ((e.target as HTMLElement).closest('.delete-btn')) return;
+    handleStart(e.clientX, e.clientY);
+  };
+
   useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
+    const onMouseUp = () => handleEnd();
+
     if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
     }
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
     };
-  }, [isDragging]);
+  }, [isDragging, offset]);
+
+  // Touch Listeners for Mobile
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    handleStart(touch.clientX, touch.clientY);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    handleMove(touch.clientX, touch.clientY);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isReadOnly) return;
@@ -125,7 +145,6 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
     }
   };
 
-  // 核心逻辑：底层 z-20，悬浮或点击后升至 z-40 (越过 z-30 的连线层)
   const zIndex = (isDragging || isHovered || isSelected) ? 40 : 20;
 
   return (
@@ -138,6 +157,9 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
         zIndex: zIndex,
       }}
       onMouseDown={handleMouseDown}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={handleEnd}
       onMouseEnter={() => onHoverChange?.(true)}
       onMouseLeave={() => !isDragging && onHoverChange?.(false)}
     >
