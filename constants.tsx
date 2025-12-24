@@ -6,15 +6,16 @@ import { Character, Relationship, RelationshipTypeConfig, LayoutConfig, BoardDat
  * 
  *   🔴🔴🔴 [核心情报数据注入区 / CORE INTEL INJECTION ZONE] 🔴🔴🔴
  *   
- *   如果你想在部署后默认显示你设计的布局：
- *   1. 在网页端点击 "SAVE NEXUS" 导出 JSON 文件。
+ *   如果你想在部署后让所有人打开网页都默认显示你设计的布局：
+ *   1. 在网页端点击 "SAVE" 导出 JSON 文件。
  *   2. 用记事本打开该 JSON，复制全部内容。
  *   3. 将内容粘贴在下方 PRELOADED_BOARD_DATA 的两个反引号 `` 之间。
- *   4. 如果这里保持为空 (null)，系统将加载下方的初始 Demo 演示数据。
+ *   4. 如果这里保持为空 (``)，系统将加载下方的初始 Demo 演示数据。
+ *   5. 用户在网页端手动导入(IMPORT)的 JSON 优先级高于此处的代码预设。
  * 
  * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  */
-export const PRELOADED_BOARD_DATA: string | null = ``; 
+export const PRELOADED_BOARD_DATA: string = ``; 
 
 
 export const RELATIONSHIP_TYPES: RelationshipTypeConfig[] = [
@@ -59,39 +60,6 @@ export const INITIAL_CHARACTERS: Character[] = [
     position: { x: 200, y: 150 }
   },
   {
-    id: 'c3',
-    name: '紫发男生',
-    nameEn: 'CHAMBER SON',
-    role: '商会少爷',
-    affiliation: 'Chamber',
-    description: '商会当家少爷。与金发男生分属不同势力。与橙发男孩、黑发女孩在地下车场相识。',
-    imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=600',
-    gallery: [],
-    position: { x: 800, y: 150 }
-  },
-  {
-    id: 'c4',
-    name: '橙发男孩',
-    nameEn: 'STREET RACER',
-    role: '地下车手',
-    affiliation: 'Street',
-    description: '在街头长大，话多，巴拉巴拉说个没完。与黑发女孩是半路幼驯染。相识于地下车场。',
-    imageUrl: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&q=80&w=600',
-    gallery: [],
-    position: { x: 800, y: 450 }
-  },
-  {
-    id: 'c5',
-    name: '黑发女孩',
-    nameEn: 'DRIFT MASTER',
-    role: '地下车手',
-    affiliation: 'Street',
-    description: '在街头长大，沉默寡言。与橙发男孩是半路幼驯染。',
-    imageUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=600',
-    gallery: [],
-    position: { x: 1050, y: 450 }
-  },
-  {
     id: 'c6',
     name: '红发男生',
     nameEn: 'MASTER FRAUD',
@@ -101,24 +69,10 @@ export const INITIAL_CHARACTERS: Character[] = [
     imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=600',
     gallery: [],
     position: { x: 200, y: 450 }
-  },
-  {
-    id: 'c7',
-    name: '银发女生',
-    nameEn: 'ELITE HITMAN',
-    role: '专业打手',
-    affiliation: 'Syndicate',
-    description: '天降幼驯染。孤儿血腥巷弄成长史，被大佬带走。不记得红发，但在任务中结缘。',
-    imageUrl: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&q=80&w=600',
-    gallery: [],
-    position: { x: 500, y: 450 }
   }
 ];
 
 export const INITIAL_RELATIONSHIPS: Relationship[] = [
   { id: 'r1', fromId: 'c2', toId: 'c1', label: '铁血明恋', description: '虽然你救了我，但我只想默默守着你。', typeId: 'love' },
-  { id: 'r2', fromId: 'c4', toId: 'c5', label: '半路幼驯染', description: '街头长大的死党，默契十足。', typeId: 'childhood', isBiDirectional: true },
   { id: 'r3', fromId: 'c2', toId: 'c6', label: '打骂挚友', description: '有过不少合作的老相识。', typeId: 'friendship', isBiDirectional: true },
-  { id: 'r4', fromId: 'c6', toId: 'c7', label: '天降幼驯染', description: '男生记得女生，在任务中结缘，主力输出。', typeId: 'childhood' },
-  { id: 'r5', fromId: 'c3', toId: 'c4', label: '地下车场相识', description: '速度与激情的起点。', typeId: 'colleague' },
 ];

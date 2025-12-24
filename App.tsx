@@ -61,10 +61,9 @@ const App: React.FC = () => {
   
   const [isGroupAssignmentMode, setIsGroupAssignmentMode] = useState(false);
 
-  // 强化默认值容错
-  const [characters, setCharacters] = useState<Character[]>(INITIAL_CHARACTERS || []);
-  const [relationships, setRelationships] = useState<Relationship[]>(INITIAL_RELATIONSHIPS || []);
-  const [relTypes, setRelTypes] = useState<RelationshipTypeConfig[]>(RELATIONSHIP_TYPES || []);
+  const [characters, setCharacters] = useState<Character[]>(INITIAL_CHARACTERS);
+  const [relationships, setRelationships] = useState<Relationship[]>(INITIAL_RELATIONSHIPS);
+  const [relTypes, setRelTypes] = useState<RelationshipTypeConfig[]>(RELATIONSHIP_TYPES);
   const [layoutConfig, setLayoutConfig] = useState<LayoutConfig>({ ...DEFAULT_LAYOUT, cardScale: 1.0 });
   const [titleWhite, setTitleWhite] = useState('CHIRAKA');
   const [titleYellow, setTitleYellow] = useState('NEXUS');
@@ -125,6 +124,7 @@ const App: React.FC = () => {
     return () => window.removeEventListener('resize', updateScale);
   }, []);
 
+  // 状态应用核心逻辑
   const applyState = useCallback((state: BoardData, shouldArchive = false) => {
     if (!state) return;
 
@@ -140,17 +140,22 @@ const App: React.FC = () => {
     setCardStyle(state.cardStyle || 'default');
     setTitleStyle(state.titleStyle || 'comic');
 
+    // 本地持久化逻辑：只有手动导入(shouldArchive=true)时才更新浏览器存档
     if (shouldArchive) {
       try {
         localStorage.setItem('NEXUS_ARCHIVE_DATA', JSON.stringify(state));
-      } catch (e) { console.error("Archive Failed", e); }
+      } catch (e) {
+        console.error("Archive to LocalStorage failed:", e);
+      }
     }
   }, []);
 
+  // 加载优先级流水线
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sharedState = params.get('s');
     
+    // 1. URL 分享模式 (最高优先级)
     if (sharedState) {
       try {
         const decompressed = LZString.decompressFromEncodedURIComponent(sharedState);
@@ -163,6 +168,7 @@ const App: React.FC = () => {
       } catch (err) { console.error("URL Load failed", err); }
     } 
 
+    // 2. 本地持久化存档 (用户曾经 IMPORT 过的 JSON)
     const archived = localStorage.getItem('NEXUS_ARCHIVE_DATA');
     if (archived) {
       try {
@@ -174,6 +180,7 @@ const App: React.FC = () => {
       } catch (err) { console.error("Archive Load failed", err); }
     }
     
+    // 3. GitHub 代码预设注入 (PRELOADED_BOARD_DATA)
     if (PRELOADED_BOARD_DATA && PRELOADED_BOARD_DATA.trim() !== '') {
       try {
         const data = JSON.parse(PRELOADED_BOARD_DATA);
@@ -181,10 +188,10 @@ const App: React.FC = () => {
           applyState(data, false);
           return;
         }
-      } catch (err) { console.error("Preloaded JSON parsing failed.", err); }
+      } catch (err) { console.error("Preloaded JSON from code failed.", err); }
     }
 
-    // 最终保底：如果没有任何数据，也要应用初始 Demo 状态
+    // 4. 最终兜底：初始 Demo 演示
     applyState({
       characters: INITIAL_CHARACTERS,
       relationships: INITIAL_RELATIONSHIPS,
@@ -195,8 +202,16 @@ const App: React.FC = () => {
       sidebarWidth: 320,
       isGlobalBlackAndWhite: false
     } as BoardData, false);
-
   }, [applyState]);
+
+  const handleEmergencyReset = () => {
+    const confirmed = window.confirm("🚨 警告：此操作将清除浏览器本地所有存档情报，恢复至代码初始状态。确定要重置吗？");
+    if (confirmed) {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.reload();
+    }
+  };
 
   const handleFocusGroup = useCallback((groupId: string) => {
     const groupChars = characters.filter(c => c.groupId === groupId);
@@ -251,22 +266,13 @@ const App: React.FC = () => {
       reader.onload = (ev) => {
         try {
           const data = JSON.parse(ev.target?.result as string);
-          applyState(data, true); 
+          applyState(data, true); // 存入本地存档
           handleObserverEntry();
         } catch (err) {
           alert("Invalid JSON data format.");
         }
       };
       reader.readAsText(file);
-    }
-  };
-
-  const handleEmergencyReset = () => {
-    const confirmed = window.confirm("确定要执行紧急修复吗？这将清除所有本地缓存数据并重启应用。");
-    if (confirmed) {
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.reload();
     }
   };
 
@@ -746,7 +752,6 @@ const App: React.FC = () => {
                   <input type="file" className="hidden" accept=".json" onChange={handleStartupImport} />
                 </label>
                 
-                {/* 紧急重置按钮 */}
                 <button 
                   onClick={handleEmergencyReset}
                   className="flex items-center gap-2 px-4 md:px-6 py-2 border-2 border-red-900 text-red-900 hover:bg-red-900/10 transition-all"
@@ -777,7 +782,7 @@ const App: React.FC = () => {
           className="fixed right-0 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 p-2 md:p-3 bg-zinc-900/40 backdrop-blur-md border-l-4 border-black border-y-4 rounded-l-xl pointer-events-auto"
           style={{ transform: `scale(${uiScale}) translateY(-50%)`, transformOrigin: 'right center' }}
         >
-          <div className="bebas text-[10px] text-zinc-500 tracking-[0.2em] mb-1 text-center">NEXUS GROUPS</div>
+          <div className="bebas text-[10px] text-zinc-500 tracking-[0.2em] mb-1 text-center uppercase">NEXUS GROUPS</div>
           {!isReadOnly && (
             <button 
               onClick={() => {
@@ -920,6 +925,7 @@ const App: React.FC = () => {
         )}
       </div>
 
+      {/* 主面板容器 */}
       <div 
         className="flex-1 relative overflow-hidden board-container h-full w-full" 
         onMouseDown={(e) => { 
@@ -1038,6 +1044,7 @@ const App: React.FC = () => {
           </svg>
         </div>
 
+        {/* 标题 */}
         <div 
           className={`absolute top-6 left-6 md:top-10 md:left-10 z-[60] text-left pointer-events-auto transition-transform duration-700 ease-in-out ${isSidebarOpen ? '-translate-x-[150%]' : 'translate-x-0'}`}
           style={{ transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)', transform: `scale(${uiScale})`, transformOrigin: 'top left' }}
@@ -1058,6 +1065,7 @@ const App: React.FC = () => {
           </div>
         </div>
 
+        {/* 底部控制 */}
         <div 
           className={`absolute bottom-6 left-6 md:bottom-10 md:left-10 z-[80] pointer-events-auto flex items-center gap-2 md:gap-4 transition-transform duration-700 ease-in-out ${isSidebarOpen ? '-translate-x-[150%]' : 'translate-x-0'}`}
           style={{ transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)', transform: `scale(${uiScale})`, transformOrigin: 'bottom left' }}
@@ -1109,6 +1117,7 @@ const App: React.FC = () => {
           )}
         </div>
 
+        {/* 右上角工具 */}
         <div 
           className="absolute top-6 right-6 md:top-10 md:right-10 z-[80] flex gap-2 md:gap-4 pointer-events-auto"
           style={{ transform: `scale(${uiScale})`, transformOrigin: 'top right' }}
@@ -1131,6 +1140,7 @@ const App: React.FC = () => {
         </div>
       </div>
 
+      {/* 相册侧边栏 */}
       <div 
         className={`absolute right-0 top-0 h-full z-[120] album-drawer flex flex-col p-4 md:p-6 shadow-2xl transition-transform duration-700 border-l-4 border-black bg-[#1e1e22] ${isAlbumOpen ? 'translate-x-0' : 'translate-x-full'}`}
         style={{ width: Math.min(window.innerWidth * 0.9, window.innerWidth / 3), transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)' }}
@@ -1153,6 +1163,7 @@ const App: React.FC = () => {
         </div>
       </div>
 
+      {/* 大图预览 */}
       {viewedImage && (
         <div className="fixed inset-0 z-[1000] bg-black/95 flex flex-col items-center justify-center p-4 md:p-10 cursor-zoom-out" onClick={() => setViewedImage(null)}>
           <div className="relative max-w-full max-h-full flex items-center justify-center" onClick={e => e.stopPropagation()}>
@@ -1169,6 +1180,7 @@ const App: React.FC = () => {
         </div>
       )}
       
+      {/* 弹窗 */}
       {panelView === 'edit' && activeData && !isReadOnly && (
         <EditModal 
           type={activeData.position ? 'character' : 'relationship'} 
