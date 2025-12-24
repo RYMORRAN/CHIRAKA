@@ -11,7 +11,6 @@ import RelationshipLine from './components/RelationshipLine';
 import EditModal from './components/EditModal';
 import { Sparkles, Plus, Download, Upload, Image as ImageIcon, X, Save, ChevronLeft, ChevronRight, Palette, FolderHeart, Loader2, FileJson, FolderDown, FileUp, Undo2, Redo2, Layout, GripVertical, HelpCircle, MousePointer2, Move, Link, ZoomIn, Terminal, Check, Box, Type, Filter, Users, Skull, Lock, Eye, ShieldCheck, Database, PencilLine, ShieldAlert, Share2 } from 'lucide-react';
 
-// 自定义玫瑰图标 (女王蜂)
 const RoseIcon = ({ size = 22, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <path d="M12 7c2.5 0 4.5 2 4.5 4.5S14.5 16 12 16s-4.5-2-4.5-4.5S9.5 7 12 7z" />
@@ -23,7 +22,6 @@ const RoseIcon = ({ size = 22, className = "" }) => (
   </svg>
 );
 
-// 自定义分子三角形图标 (ANGEL ZOO)
 const MoleculeTriangleIcon = ({ size = 22, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <path d="M12 4L4 18h16L12 4z" />
@@ -33,7 +31,6 @@ const MoleculeTriangleIcon = ({ size = 22, className = "" }) => (
   </svg>
 );
 
-// 自定义荆棘图标 (伊甸之东)
 const ThornsIcon = ({ size = 22, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <path d="M3 12c4 0 4-4 8-4s4 4 8 4 4-4 8-4" />
@@ -62,7 +59,6 @@ const App: React.FC = () => {
   const [authError, setAuthError] = useState(false);
   const [showObserverWelcome, setShowObserverWelcome] = useState(false);
   
-  // 组别编辑状态
   const [isGroupAssignmentMode, setIsGroupAssignmentMode] = useState(false);
 
   const [characters, setCharacters] = useState<Character[]>(INITIAL_CHARACTERS);
@@ -92,7 +88,6 @@ const App: React.FC = () => {
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const [viewedImage, setViewedImage] = useState<string | null>(null);
 
-  // Initial zoom set to account for 0.67 preference mentioned by user
   const [zoom, setZoom] = useState(0.8); 
   const [viewPos, setViewPos] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
@@ -117,8 +112,6 @@ const App: React.FC = () => {
   const lastTouchDist = useRef<number | null>(null);
 
   const isReadOnly = viewMode === 'observer';
-
-  // Responsive UI Scale factor (0.67 for desktop, higher for mobile)
   const [uiScale, setUiScale] = useState(1);
 
   useEffect(() => {
@@ -131,7 +124,7 @@ const App: React.FC = () => {
     return () => window.removeEventListener('resize', updateScale);
   }, []);
 
-  const applyState = useCallback((state: BoardData) => {
+  const applyState = useCallback((state: BoardData, shouldArchive = false) => {
     setCharacters(state.characters || INITIAL_CHARACTERS);
     setRelationships(state.relationships || INITIAL_RELATIONSHIPS);
     setRelTypes(state.relTypes || RELATIONSHIP_TYPES);
@@ -143,33 +136,48 @@ const App: React.FC = () => {
     setBackgroundStyle(state.backgroundStyle || 'default');
     setCardStyle(state.cardStyle || 'default');
     setTitleStyle(state.titleStyle || 'comic');
+
+    // 只有在手动导入或保存时才更新本地存档
+    if (shouldArchive) {
+      localStorage.setItem('NEXUS_ARCHIVE_DATA', JSON.stringify(state));
+    }
   }, []);
 
-  // On mount: check for URL state OR hardcoded preloaded data
+  // 加载优先级逻辑
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sharedState = params.get('s');
     
+    // 优先级 1: URL 分享参数 (最高)
     if (sharedState) {
-      // Priority 1: URL Shared Link
       try {
         const decompressed = LZString.decompressFromEncodedURIComponent(sharedState);
         if (decompressed) {
           const data = JSON.parse(decompressed);
-          applyState(data);
+          applyState(data, false); // URL分享的不自动覆盖本地存档
           setViewMode('observer');
           return;
         }
       } catch (err) { console.error("URL Load failed", err); }
     } 
+
+    // 优先级 2: 本地存档 (Archive)
+    const archived = localStorage.getItem('NEXUS_ARCHIVE_DATA');
+    if (archived) {
+      try {
+        const data = JSON.parse(archived);
+        applyState(data, false);
+        return;
+      } catch (err) { console.error("Archive Load failed", err); }
+    }
     
+    // 优先级 3: GitHub 预设代码 (PRELOADED_BOARD_DATA)
     if (PRELOADED_BOARD_DATA && PRELOADED_BOARD_DATA.trim() !== '') {
-      // Priority 2: Hardcoded JSON in constants.tsx
       try {
         const data = JSON.parse(PRELOADED_BOARD_DATA);
-        applyState(data);
+        applyState(data, false);
       } catch (err) {
-        console.error("Preloaded JSON parsing failed. Check constants.tsx syntax.", err);
+        console.error("Preloaded JSON parsing failed.", err);
       }
     }
   }, [applyState]);
@@ -177,30 +185,23 @@ const App: React.FC = () => {
   const handleFocusGroup = useCallback((groupId: string) => {
     const groupChars = characters.filter(c => c.groupId === groupId);
     if (groupChars.length === 0) return;
-
     const padding = 150;
     const cardW = 160;
     const cardH = 220;
-
     const minX = Math.min(...groupChars.map(c => c.position.x));
     const minY = Math.min(...groupChars.map(c => c.position.y));
     const maxX = Math.max(...groupChars.map(c => c.position.x + cardW));
     const maxY = Math.max(...groupChars.map(c => c.position.y + cardH));
-
     const boxW = maxX - minX;
     const boxH = maxY - minY;
-
     const viewportW = window.innerWidth;
     const viewportH = window.innerHeight;
-
     const zoomX = (viewportW - padding * 2) / boxW;
     const zoomY = (viewportH - padding * 2) / boxH;
     let targetZoom = Math.min(zoomX, zoomY);
     targetZoom = Math.max(0.3, Math.min(targetZoom, 1.2));
-
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
-
     setZoom(targetZoom);
     setViewPos({
       x: viewportW / 2 - centerX * targetZoom,
@@ -234,7 +235,7 @@ const App: React.FC = () => {
       reader.onload = (ev) => {
         try {
           const data = JSON.parse(ev.target?.result as string);
-          applyState(data);
+          applyState(data, true); // 手动导入时更新 Archive
           handleObserverEntry();
         } catch (err) {
           alert("Invalid JSON data format.");
@@ -263,13 +264,11 @@ const App: React.FC = () => {
     const jsonStr = JSON.stringify(data);
     const compressed = LZString.compressToEncodedURIComponent(jsonStr);
     const url = `${window.location.origin}${window.location.pathname}?s=${compressed}`;
-    
     navigator.clipboard.writeText(url).then(() => {
       setCopyStatus("LINK COPIED!");
       setTimeout(() => setCopyStatus(null), 2000);
     }).catch(err => {
       console.error("Failed to copy:", err);
-      alert("Failed to copy link. Check console.");
     });
   };
 
@@ -285,7 +284,7 @@ const App: React.FC = () => {
     const lastState = history[history.length - 1];
     setRedoStack(prev => [...prev, currentState]);
     setHistory(prev => prev.slice(0, -1));
-    applyState(lastState);
+    applyState(lastState, false); // 撤销操作不自动更新存档，防止误操作
   }, [history, getCurrentBoardData, isReadOnly, applyState]);
 
   const handleRedo = useCallback(() => {
@@ -294,7 +293,7 @@ const App: React.FC = () => {
     const nextState = redoStack[redoStack.length - 1];
     setHistory(prev => [...prev, currentState]);
     setRedoStack(prev => prev.slice(0, -1));
-    applyState(nextState);
+    applyState(nextState, false);
   }, [redoStack, getCurrentBoardData, isReadOnly, applyState]);
 
   const handleAutoLayout = useCallback(() => {
@@ -343,7 +342,6 @@ const App: React.FC = () => {
       }));
       return;
     }
-
     if (isDeletionMode) return;
     if (focusedCharId === char.id) {
       setFocusedCharId(null);
@@ -406,11 +404,8 @@ const App: React.FC = () => {
   }, [handleUndo, handleRedo, viewMode]);
 
   useEffect(() => {
-    if (isPanning) {
-      document.body.style.cursor = 'grabbing';
-    } else {
-      document.body.style.cursor = '';
-    }
+    if (isPanning) document.body.style.cursor = 'grabbing';
+    else document.body.style.cursor = '';
   }, [isPanning]);
 
   const handleGlobalMouseMove = useCallback((e: MouseEvent) => {
@@ -430,7 +425,6 @@ const App: React.FC = () => {
     lastMousePos.current = { x: e.clientX, y: e.clientY };
   }, [isPanning, isResizingSidebar, viewPos, zoom]);
 
-  // Touch Handlers for Mobile Panning and Pinch-to-Zoom
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
       const touch = e.touches[0];
@@ -936,7 +930,7 @@ const App: React.FC = () => {
                       try { 
                         const data = JSON.parse(ev.target?.result as string);
                         recordHistory(); 
-                        applyState(data); 
+                        applyState(data, true); 
                       } catch(e){} 
                     }; 
                     r.readAsText(file); 
@@ -1077,7 +1071,6 @@ const App: React.FC = () => {
           </svg>
         </div>
 
-        {/* Scaled Top Left Title */}
         <div 
           className={`absolute top-6 left-6 md:top-10 md:left-10 z-[60] text-left pointer-events-auto transition-transform duration-700 ease-in-out ${isSidebarOpen ? '-translate-x-[150%]' : 'translate-x-0'}`}
           style={{ transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)', transform: `scale(${uiScale})`, transformOrigin: 'top left' }}
@@ -1098,7 +1091,6 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Scaled Bottom Controls */}
         <div 
           className={`absolute bottom-6 left-6 md:bottom-10 md:left-10 z-[80] pointer-events-auto flex items-center gap-2 md:gap-4 transition-transform duration-700 ease-in-out ${isSidebarOpen ? '-translate-x-[150%]' : 'translate-x-0'}`}
           style={{ transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)', transform: `scale(${uiScale})`, transformOrigin: 'bottom left' }}
@@ -1150,7 +1142,6 @@ const App: React.FC = () => {
           )}
         </div>
 
-        {/* Scaled Top Right Toolbar */}
         <div 
           className="absolute top-6 right-6 md:top-10 md:right-10 z-[80] flex gap-2 md:gap-4 pointer-events-auto"
           style={{ transform: `scale(${uiScale})`, transformOrigin: 'top right' }}
